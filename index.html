@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="세트 타이머">
+<meta name="description" content="세트 사이 휴식 시간을 알려주는 운동 타이머">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>세트 타이머</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: rgba(255,255,255,0.07);
+    --text: #f0f0f8;
+    --muted: rgba(240,240,248,0.45);
+    --dim: rgba(240,240,248,0.2);
+    --work: #7b6ef6;
+    --work-glow: rgba(123,110,246,0.3);
+    --work-dim: rgba(123,110,246,0.12);
+    --rest: #34d399;
+    --rest-glow: rgba(52,211,153,0.25);
+    --rest-dim: rgba(52,211,153,0.1);
+    --prep: #fbbf24;
+    --prep-glow: rgba(251,191,36,0.25);
+    --done: #f472b6;
+    --done-glow: rgba(244,114,182,0.3);
+    --r: 16px;
+    --font-num: 'Space Mono', monospace;
+    --font-ui: 'Noto Sans KR', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); overflow: hidden; touch-action: manipulation; }
+
+  body { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100dvh; }
+
+  /* ─── Header ─── */
+  header {
+    width: 100%; max-width: 480px; padding: env(safe-area-inset-top, 12px) 20px 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .app-name { font-size: 13px; font-weight: 500; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; padding-top: 16px; }
+  .sound-btn {
+    margin-top: 16px;
+    width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); font-size: 16px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sound-btn.on { color: var(--work); border-color: var(--work); background: var(--work-dim); }
+
+  /* ─── Main ─── */
+  main { width: 100%; max-width: 480px; flex: 1; display: flex; flex-direction: column; align-items: center; padding: 0 20px; overflow: hidden; }
+
+  /* ─── Phase badge ─── */
+  .phase-badge {
+    margin-top: 16px; margin-bottom: 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 14px; border-radius: 999px;
+    font-size: 12px; font-weight: 500; letter-spacing: 0.06em;
+    border: 1px solid var(--border); color: var(--muted);
+    background: var(--surface); transition: all 0.3s ease;
+  }
+  .phase-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+  .phase-badge.work { color: var(--work); border-color: rgba(123,110,246,0.35); background: var(--work-dim); }
+  .phase-badge.work .dot { background: var(--work); box-shadow: 0 0 6px var(--work); animation: pulse 1.2s infinite; }
+  .phase-badge.rest { color: var(--rest); border-color: rgba(52,211,153,0.3); background: var(--rest-dim); }
+  .phase-badge.rest .dot { background: var(--rest); box-shadow: 0 0 6px var(--rest); }
+  .phase-badge.prep { color: var(--prep); border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.08); }
+  .phase-badge.prep .dot { background: var(--prep); animation: pulse 0.8s infinite; }
+  .phase-badge.done { color: var(--done); border-color: rgba(244,114,182,0.3); background: rgba(244,114,182,0.08); }
+  .phase-badge.done .dot { background: var(--done); }
+
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* ─── Ring ─── */
+  .ring-wrap { position: relative; width: 240px; height: 240px; flex-shrink: 0; }
+  .ring-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: var(--surface2); stroke-width: 12; }
+  #progress-arc { fill: none; stroke: var(--work); stroke-width: 12; stroke-linecap: round;
+    stroke-dasharray: 691.15; stroke-dashoffset: 691.15;
+    transition: stroke-dashoffset 0.95s linear, stroke 0.4s ease, filter 0.4s ease;
+    filter: drop-shadow(0 0 8px var(--work-glow));
+  }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #time-big { font-family: var(--font-num); font-size: 58px; font-weight: 700; letter-spacing: -2px; line-height: 1; color: var(--text); transition: color 0.3s; }
+  #set-info { margin-top: 6px; font-size: 13px; color: var(--muted); letter-spacing: 0.04em; }
+
+  /* ─── Settings grid ─── */
+  .settings { width: 100%; margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .setting-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;
+    transition: border-color 0.2s;
+  }
+  .setting-card:focus-within { border-color: rgba(123,110,246,0.4); }
+  .setting-label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
+  .setting-row { display: flex; align-items: center; gap: 8px; }
+  .setting-row input {
+    flex: 1; min-width: 0; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: var(--font-num); font-size: 20px;
+    font-weight: 700; text-align: center; padding: 6px 4px;
+    -webkit-appearance: none; appearance: none;
+  }
+  .setting-row input:focus { outline: none; border-color: var(--work); }
+  .setting-unit { font-size: 12px; color: var(--dim); flex-shrink: 0; }
+  .adj-btn {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted); font-size: 18px; line-height: 1;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    flex-shrink: 0; user-select: none; transition: all 0.15s;
+  }
+  .adj-btn:active { background: var(--work-dim); color: var(--work); transform: scale(0.92); }
+
+  /* ─── Buttons ─── */
+  .btn-row { width: 100%; display: flex; gap: 10px; margin-top: 16px; }
+  .btn-main {
+    flex: 3; height: 60px; border-radius: var(--r); border: none; cursor: pointer;
+    font-family: var(--font-ui); font-size: 16px; font-weight: 700; letter-spacing: 0.03em;
+    background: var(--work); color: #fff;
+    box-shadow: 0 0 24px var(--work-glow);
+    transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-main:active { transform: scale(0.96); }
+  .btn-main.rest-mode { background: var(--rest); box-shadow: 0 0 24px var(--rest-glow); }
+  .btn-main.paused { background: var(--surface); border: 1px solid var(--border); color: var(--text); box-shadow: none; }
+  .btn-reset {
+    flex: 1; height: 60px; border-radius: var(--r);
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--muted); font-size: 20px; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-reset:active { background: var(--surface2); transform: scale(0.95); }
+
+  /* ─── Log ─── */
+  .log-section { width: 100%; margin-top: 14px; flex: 1; overflow: hidden; min-height: 0; }
+  .log-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; max-height: 100%; padding-bottom: env(safe-area-inset-bottom, 20px); }
+  .log-list::-webkit-scrollbar { display: none; }
+  .log-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; background: var(--surface); border-radius: 10px;
+    border: 1px solid var(--border); font-size: 12px; color: var(--muted);
+    animation: slideIn 0.3s ease;
+  }
+  .log-item .log-msg { font-weight: 500; color: var(--text); }
+  @keyframes slideIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform:none; } }
+
+  /* ─── Completion overlay ─── */
+  #done-overlay {
+    position: fixed; inset: 0; background: rgba(10,10,15,0.95);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100; gap: 16px;
+  }
+  #done-overlay.show { display: flex; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:none} }
+  .done-emoji { font-size: 72px; }
+  .done-title { font-size: 28px; font-weight: 700; color: var(--done); letter-spacing: -0.5px; }
+  .done-sub { font-size: 15px; color: var(--muted); }
+  .done-btn {
+    margin-top: 16px; padding: 14px 40px; border-radius: var(--r); border: none;
+    background: var(--done); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+    font-family: var(--font-ui); box-shadow: 0 0 30px var(--done-glow);
+  }
+
+  /* ─── Install banner ─── */
+  #install-banner {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px));
+    display: none; align-items: center; justify-content: space-between; gap: 12px;
+    z-index: 50;
+  }
+  #install-banner.show { display: flex; }
+  #install-banner p { font-size: 13px; color: var(--muted); flex: 1; }
+  #install-banner p strong { color: var(--text); display: block; font-size: 14px; }
+  #btn-install { padding: 8px 16px; border-radius: 10px; background: var(--work); color: #fff; border: none; font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font-ui); white-space: nowrap; }
+  #btn-install-close { color: var(--dim); font-size: 20px; cursor: pointer; padding: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="app-name">세트 타이머</span>
+  <button class="sound-btn" id="sound-btn" onclick="toggleSound()" aria-label="소리 켜기/끄기">🔇</button>
+</header>
+
+<main>
+  <div class="phase-badge" id="phase-badge">
+    <span class="dot"></span>
+    <span id="phase-text">준비 완료</span>
+  </div>
+
+  <div class="ring-wrap">
+    <svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+      <circle class="ring-track" cx="110" cy="110" r="110" />
+      <circle id="progress-arc" cx="110" cy="110" r="110" />
+    </svg>
+    <div class="ring-center">
+      <div id="time-big">00:00</div>
+      <div id="set-info">시작을 눌러주세요</div>
+    </div>
+  </div>
+
+  <div class="settings">
+    <div class="setting-card">
+      <div class="setting-label">운동 시간</div>
+      <div class="setting-row">
+        <button class="adj-btn" onclick="adj('work',-5)">−</button>
+        <input type="number" id="work-time" value="45" min="5" max="600" inputmode="numeric">
+        <button class="adj-btn" onclick="adj('work',5)">+</button>
+      </div>
+      <div class="setting-unit">초</div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-label">휴식 시간</div>
+      <div class="setting-row">
+        <button class="adj-btn" onclick="adj('rest',-5)">−</button>
+        <input type="number" id="rest-time" value="60" min="5" max="600" inputmode="numeric">
+        <button class="adj-btn" onclick="adj('rest',5)">+</button>
+      </div>
+      <div class="setting-unit">초</div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-label">세트 수</div>
+      <div class="setting-row">
+        <button class="adj-btn" onclick="adj('sets',-1)">−</button>
+        <input type="number" id="total-sets" value="4" min="1" max="30" inputmode="numeric">
+        <button class="adj-btn" onclick="adj('sets',1)">+</button>
+      </div>
+      <div class="setting-unit">세트</div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-label">준비 시간</div>
+      <div class="setting-row">
+        <button class="adj-btn" onclick="adj('prep',-1)">−</button>
+        <input type="number" id="prep-time" value="5" min="0" max="30" inputmode="numeric">
+        <button class="adj-btn" onclick="adj('prep',1)">+</button>
+      </div>
+      <div class="setting-unit">초</div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-main" id="btn-main" onclick="toggleTimer()">▶ 시작</button>
+    <button class="btn-reset" onclick="resetTimer()" aria-label="초기화">↺</button>
+  </div>
+
+  <div class="log-section">
+    <div class="log-list" id="log-list"></div>
+  </div>
+</main>
+
+<!-- Completion overlay -->
+<div id="done-overlay">
+  <div class="done-emoji">🏆</div>
+  <div class="done-title">운동 완료!</div>
+  <div class="done-sub" id="done-sub">수고하셨습니다</div>
+  <button class="done-btn" onclick="closeDone()">다시 하기</button>
+</div>
+
+<!-- Install banner -->
+<div id="install-banner">
+  <p><strong>홈 화면에 설치하기</strong>앱처럼 바로 실행할 수 있어요</p>
+  <button id="btn-install" onclick="installApp()">설치</button>
+  <span id="btn-install-close" onclick="closeBanner()">✕</span>
+</div>
+
+<script>
+// ─── State ───
+let phase = 'idle', currentSet = 0, timeLeft = 0, totalTime = 0;
+let running = false, interval = null, soundOn = false, audioCtx = null;
+let deferredPrompt = null, workoutStart = null, logs = [];
+const circumference = 2 * Math.PI * 110;
+
+// ─── DOM ───
+const arc = document.getElementById('progress-arc');
+const timeBig = document.getElementById('time-big');
+const setInfo = document.getElementById('set-info');
+const phaseBadge = document.getElementById('phase-badge');
+const phaseText = document.getElementById('phase-text');
+const btnMain = document.getElementById('btn-main');
+const logList = document.getElementById('log-list');
+const soundBtn = document.getElementById('sound-btn');
+
+// ─── Settings helpers ───
+function get(id) { return Math.max(0, parseInt(document.getElementById(id).value) || 0); }
+function cfg() { return { work: Math.max(5,get('work-time')), rest: Math.max(5,get('rest-time')), sets: Math.max(1,get('total-sets')), prep: get('prep-time') }; }
+function adj(field, delta) {
+  const ids = { work:'work-time', rest:'rest-time', sets:'total-sets', prep:'prep-time' };
+  const inp = document.getElementById(ids[field]);
+  const mins = { work:5, rest:5, sets:1, prep:0 };
+  inp.value = Math.max(mins[field], parseInt(inp.value||0) + delta);
+}
+
+// ─── Format ───
+function fmt(s) {
+  const m = Math.floor(s/60), sec = s%60;
+  return m>0 ? m+':'+(sec<10?'0':'')+sec : String(sec);
+}
+
+// ─── Ring ───
+function setRing(ratio, color, glowColor) {
+  const offset = circumference * (1 - Math.max(0,Math.min(1,ratio)));
+  arc.style.strokeDashoffset = offset;
+  arc.style.stroke = color;
+  arc.style.filter = `drop-shadow(0 0 10px ${glowColor})`;
+}
+
+// ─── Phase UI ───
+const phaseColors = {
+  idle:  { stroke:'#3a3a4a', glow:'transparent', badge:'', label:'준비 완료' },
+  prep:  { stroke:'#fbbf24', glow:'rgba(251,191,36,0.4)', badge:'prep', label:'준비 중' },
+  work:  { stroke:'#7b6ef6', glow:'rgba(123,110,246,0.5)', badge:'work', label:'운동 중' },
+  rest:  { stroke:'#34d399', glow:'rgba(52,211,153,0.4)', badge:'rest', label:'휴식 중' },
+  done:  { stroke:'#f472b6', glow:'rgba(244,114,182,0.4)', badge:'done', label:'완료' },
+};
+
+function applyPhaseUI(p) {
+  const c = phaseColors[p] || phaseColors.idle;
+  phaseBadge.className = 'phase-badge ' + c.badge;
+  phaseText.textContent = c.label;
+}
+
+// ─── Sound ───
+function beep(type) {
+  if (!soundOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    const ctx = audioCtx;
+    const play = (freq, when, dur, vol=0.3) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = freq; g.gain.value = vol;
+      o.start(ctx.currentTime+when); o.stop(ctx.currentTime+when+dur);
+    };
+    if (type==='start')    { play(880,0,0.12); play(1100,0.14,0.12); }
+    else if (type==='rest'){ play(660,0,0.15); play(440,0.18,0.25); }
+    else if (type==='tick'){ play(1400,0,0.06,0.15); }
+    else if (type==='done'){ play(660,0,0.15); play(880,0.18,0.15); play(1100,0.36,0.25); }
+  } catch(e){}
+}
+
+function toggleSound() {
+  soundOn = !soundOn;
+  soundBtn.textContent = soundOn ? '🔔' : '🔇';
+  soundBtn.className = 'sound-btn' + (soundOn ? ' on' : '');
+  if (soundOn) { if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); beep('start'); }
+}
+
+// ─── Log ───
+function addLog(msg) {
+  const now = new Date();
+  const t = now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  item.innerHTML = `<span class="log-msg">${msg}</span><span>${t}</span>`;
+  logList.prepend(item);
+  if (logList.children.length > 10) logList.lastChild.remove();
+}
+
+// ─── Timer core ───
+function startPhase(p, set, duration) {
+  phase = p; currentSet = set; timeLeft = duration; totalTime = duration;
+  applyPhaseUI(p);
+  const c = phaseColors[p];
+  setRing(1, c.stroke, c.glow);
+  timeBig.textContent = fmt(timeLeft);
+
+  const s = cfg();
+  if (p==='prep')   { setInfo('잠시 후 시작...'); }
+  else if (p==='work') { setInfo(`세트 ${set} / ${s.sets}`); beep('start'); addLog(`세트 ${set} 시작`); }
+  else if (p==='rest') { setInfo(`세트 ${set} 완료 — 쉬세요`); beep('rest'); addLog(`세트 ${set} 완료 · 휴식`); }
+}
+
+function nextPhase() {
+  const s = cfg();
+  if (phase==='prep') { startPhase('work', 1, s.work); }
+  else if (phase==='work') {
+    if (currentSet >= s.sets) { endWorkout(); }
+    else { startPhase('rest', currentSet, s.rest); }
+  }
+  else if (phase==='rest') { startPhase('work', currentSet+1, s.work); }
+}
+
+function tick() {
+  timeLeft--;
+  if (timeLeft<=3 && timeLeft>0) beep('tick');
+  setRing(timeLeft/totalTime, phaseColors[phase].stroke, phaseColors[phase].glow);
+  timeBig.textContent = fmt(timeLeft);
+  if (timeLeft<=0) nextPhase();
+}
+
+function endWorkout() {
+  clearInterval(interval); interval=null; running=false;
+  beep('done'); addLog('🏆 운동 완료!');
+  const elapsed = workoutStart ? Math.round((Date.now()-workoutStart)/1000) : 0;
+  const mins = Math.floor(elapsed/60), secs = elapsed%60;
+  document.getElementById('done-sub').textContent = `총 ${mins}분 ${secs}초 운동했어요 · 수고하셨습니다!`;
+  document.getElementById('done-overlay').classList.add('show');
+  phase='done'; applyPhaseUI('done');
+  btnMain.textContent = '▶ 시작'; btnMain.className='btn-main';
+}
+
+function closeDone() {
+  document.getElementById('done-overlay').classList.remove('show');
+  resetTimer();
+}
+
+// ─── Controls ───
+function toggleTimer() {
+  if (phase==='idle'||phase==='done') {
+    workoutStart = Date.now();
+    const s = cfg();
+    running=true;
+    btnMain.textContent='⏸ 일시정지'; btnMain.className='btn-main';
+    if (s.prep>0) { startPhase('prep',0,s.prep); } else { startPhase('work',1,s.work); }
+    interval = setInterval(tick, 1000);
+  } else if (running) {
+    clearInterval(interval); interval=null; running=false;
+    btnMain.textContent='▶ 재개'; btnMain.className='btn-main paused';
+  } else {
+    running=true;
+    interval=setInterval(tick,1000);
+    btnMain.textContent='⏸ 일시정지';
+    btnMain.className='btn-main' + (phase==='rest'?' rest-mode':'');
+  }
+}
+
+function resetTimer() {
+  clearInterval(interval); interval=null; running=false; phase='idle';
+  applyPhaseUI('idle');
+  setRing(0,'#3a3a4a','transparent');
+  timeBig.textContent='00:00'; setInfo('시작을 눌러주세요');
+  btnMain.textContent='▶ 시작'; btnMain.className='btn-main';
+}
+
+// ─── PWA install ───
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt=e;
+  document.getElementById('install-banner').classList.add('show');
+});
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(()=>{deferredPrompt=null; closeBanner();});
+}
+function closeBanner() { document.getElementById('install-banner').classList.remove('show'); }
+window.addEventListener('appinstalled', closeBanner);
+
+// ─── iOS install hint ───
+const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.navigator.standalone;
+if (isIos && !isStandalone) {
+  setTimeout(()=>{
+    const b = document.getElementById('install-banner');
+    b.querySelector('p').innerHTML = '<strong>홈 화면에 추가하기</strong>하단 공유버튼 → "홈 화면에 추가" 탭하세요';
+    b.querySelector('#btn-install').style.display='none';
+    b.classList.add('show');
+  }, 2000);
+}
+
+// ─── Wake Lock (화면 꺼짐 방지) ───
+let wakeLock = null;
+async function requestWakeLock() {
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+}
+document.addEventListener('visibilitychange', async ()=>{ if (document.visibilityState==='visible') requestWakeLock(); });
+requestWakeLock();
+
+// ─── Service Worker ───
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
