@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TRAINER SIMULATOR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e12;
+    --surface: #18181f;
+    --surface2: #22222c;
+    --border: rgba(255,255,255,0.08);
+    --accent: #7c6ff7;
+    --accent2: #a89cff;
+    --accent-dim: rgba(124,111,247,0.15);
+    --text: #f0effe;
+    --muted: #888;
+    --danger: #e05c5c;
+    --success: #5ccfa0;
+    --warn: #e0a85c;
+    --radius: 14px;
+    --radius-sm: 9px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); font-family: 'Noto Sans KR', sans-serif; color: var(--text); }
+
+  /* ── SCREEN SYSTEM ── */
+  .screen { display: none; flex-direction: column; height: 100dvh; overflow: hidden; }
+  .screen.active { display: flex; }
+
+  /* ── API KEY SCREEN ── */
+  #screen-apikey {
+    align-items: center; justify-content: center;
+    padding: 2rem;
+    background: var(--bg);
+  }
+  .apikey-card {
+    width: 100%; max-width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem 1.5rem;
+  }
+  .logo-block { text-align: center; margin-bottom: 2rem; }
+  .logo-emoji { font-size: 44px; display: block; margin-bottom: 8px; }
+  .logo-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 18px; letter-spacing: 2px;
+    color: var(--accent2);
+  }
+  .logo-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; letter-spacing: 0.5px; }
+  .field-wrap { position: relative; margin-bottom: 1rem; }
+  input[type="password"], input[type="text"] {
+    width: 100%; padding: 0.75rem 2.5rem 0.75rem 0.9rem;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-size: 14px; font-family: 'Space Mono', monospace;
+    outline: none; transition: border-color 0.2s;
+  }
+  input:focus { border-color: var(--accent); }
+  .toggle-vis {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 16px; padding: 4px;
+  }
+  .hint { font-size: 11px; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.6; }
+  .hint a { color: var(--accent2); text-decoration: none; }
+
+  /* ── PRIMARY BUTTON ── */
+  .btn-primary {
+    width: 100%; padding: 0.85rem;
+    background: var(--accent); border: none;
+    border-radius: var(--radius-sm); color: #fff;
+    font-size: 15px; font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer; transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 0.5px;
+  }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── MENU SCREEN ── */
+  #screen-menu { padding: 0; background: var(--bg); }
+  .menu-scroll { flex: 1; overflow-y: auto; padding: 1.5rem 1rem 6rem; }
+  .section-title {
+    font-size: 11px; letter-spacing: 1.5px; color: var(--muted);
+    text-transform: uppercase; margin: 1.5rem 0 0.6rem;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  .mode-card {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1rem;
+    margin-bottom: 8px;
+    cursor: pointer; text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .mode-card:hover { background: var(--surface2); }
+  .mode-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .mode-icon { font-size: 24px; width: 36px; text-align: center; flex-shrink: 0; }
+  .mode-name { font-size: 15px; font-weight: 700; color: var(--text); }
+  .mode-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1.5rem; }
+  .diff-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 0.75rem 0.6rem;
+    cursor: pointer; text-align: center;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .diff-card:hover { background: var(--surface2); }
+  .diff-card.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .diff-name { font-size: 14px; font-weight: 700; }
+  .diff-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .menu-footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    padding: 1rem;
+    background: linear-gradient(to top, var(--bg) 70%, transparent);
+  }
+
+  /* ── GAME SCREEN ── */
+  #screen-game { background: var(--bg); }
+  .game-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 0.9rem 1rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .back-btn {
+    background: none; border: none; color: var(--muted);
+    font-size: 20px; cursor: pointer; padding: 4px; line-height: 1;
+  }
+  .game-title-wrap { flex: 1; }
+  .game-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .game-subtitle { font-size: 11px; color: var(--muted); }
+  .stat-pill {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--surface2); border-radius: 20px;
+    padding: 4px 10px; font-size: 11px; color: var(--muted);
+    white-space: nowrap;
+  }
+  .stat-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .chat-area {
+    flex: 1; overflow-y: auto;
+    padding: 1rem;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .bubble {
+    max-width: 88%;
+    padding: 0.9rem 1rem;
+    border-radius: var(--radius);
+    font-size: 14px; line-height: 1.7;
+    white-space: pre-wrap;
+  }
+  .bubble.system {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    align-self: flex-start;
+    color: var(--text);
+  }
+  .bubble.user {
+    background: var(--accent);
+    align-self: flex-end;
+    color: #fff;
+  }
+  .bubble .turn-tag {
+    font-size: 10px; letter-spacing: 1px;
+    color: var(--accent2); font-family: 'Space Mono', monospace;
+    margin-bottom: 6px; display: block;
+  }
+  .stat-bar {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1rem;
+    margin-top: 4px;
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  .stat-item { display: flex; flex-direction: column; gap: 2px; }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+  .stat-val { font-size: 13px; font-weight: 700; }
+  .stat-val.good { color: var(--success); }
+  .stat-val.mid { color: var(--warn); }
+  .stat-val.bad { color: var(--danger); }
+
+  .choices-wrap {
+    padding: 0.75rem 1rem 1.25rem;
+    flex-shrink: 0;
+    background: linear-gradient(to top, var(--bg) 80%, transparent);
+  }
+  .choice-btn {
+    display: flex; align-items: flex-start; gap: 10px;
+    width: 100%; margin-bottom: 7px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 0.9rem;
+    cursor: pointer; text-align: left;
+    color: var(--text); font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    transition: border-color 0.15s, background 0.15s;
+    line-height: 1.5;
+  }
+  .choice-btn:last-child { margin-bottom: 0; }
+  .choice-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .choice-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .choice-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px; color: var(--accent2);
+    flex-shrink: 0; margin-top: 1px;
+  }
+
+  .loading-bubble {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1rem;
+    align-self: flex-start; display: flex; gap: 5px; align-items: center;
+  }
+  .dot-pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+  .dot-pulse:nth-child(2) { animation-delay: 0.2s; }
+  .dot-pulse:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1)} }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+  .error-msg { color: var(--danger); font-size: 12px; text-align: center; padding: 0.5rem; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ── SCREEN 1: API KEY ── -->
+<div id="screen-apikey" class="screen active">
+  <div class="apikey-card">
+    <div class="logo-block">
+      <span class="logo-emoji">🏋️</span>
+      <div class="logo-title">TRAINER SIMULATOR</div>
+      <div class="logo-sub">현실 기반 PT & 러닝 코치 시뮬레이터</div>
+    </div>
+
+    <label>ANTHROPIC API KEY</label>
+    <div class="field-wrap">
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off">
+      <button class="toggle-vis" onclick="toggleVis()" id="visBtn">👁</button>
+    </div>
+    <p class="hint">
+      API 키는 브라우저에만 저장되며 외부로 전송되지 않습니다.<br>
+      키 발급: <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>
+    </p>
+    <button class="btn-primary" id="apiNextBtn" onclick="goToMenu()" disabled>다음 →</button>
+  </div>
+</div>
+
+<!-- ── SCREEN 2: MENU ── -->
+<div id="screen-menu" class="screen">
+  <div class="menu-scroll">
+    <div class="logo-block" style="padding:0.5rem 0 0.5rem; text-align:left">
+      <span style="font-family:'Space Mono',monospace;font-size:14px;color:var(--accent2);letter-spacing:2px">TRAINER SIMULATOR</span>
+    </div>
+
+    <div class="section-title">모드 선택</div>
+    <button class="mode-card" onclick="selectMode(this,'PT 회원 모드')" data-mode="PT 회원 모드">
+      <span class="mode-icon">💪</span>
+      <div><div class="mode-name">PT 회원 모드</div><div class="mode-desc">체지방·근력·통증 회원 관리</div></div>
+    </button>
+    <button class="mode-card" onclick="selectMode(this,'러닝 코칭 모드')" data-mode="러닝 코칭 모드">
+      <span class="mode-icon">🏃</span>
+      <div><div class="mode-name">러닝 코칭 모드</div><div class="mode-desc">케이던스·심박수·레이스 전략</div></div>
+    </button>
+    <button class="mode-card" onclick="selectMode(this,'체형 교정 모드')" data-mode="체형 교정 모드">
+      <span class="mode-icon">🦴</span>
+      <div><div class="mode-name">체형 교정 모드</div><div class="mode-desc">자세·불균형·재활 케어</div></div>
+    </button>
+    <button class="mode-card" onclick="selectMode(this,'컴플레인 대응 모드')" data-mode="컴플레인 대응 모드">
+      <span class="mode-icon">🔥</span>
+      <div><div class="mode-name">컴플레인 대응 모드</div><div class="mode-desc">환불·불만·감정 회원 처리</div></div>
+    </button>
+
+    <div class="section-title" style="margin-top:1.5rem">난이도</div>
+    <div class="diff-grid">
+      <button class="diff-card" onclick="selectDiff(this,'EASY')">
+        <div class="diff-name" style="color:var(--success)">🟢 EASY</div>
+        <div class="diff-sub">회원이 협조적</div>
+      </button>
+      <button class="diff-card" onclick="selectDiff(this,'NORMAL')">
+        <div class="diff-name" style="color:var(--warn)">🟡 NORMAL</div>
+        <div class="diff-sub">현실적 반응</div>
+      </button>
+      <button class="diff-card" onclick="selectDiff(this,'HARD')">
+        <div class="diff-name" style="color:var(--danger)">🟠 HARD</div>
+        <div class="diff-sub">까다롭고 예민</div>
+      </button>
+      <button class="diff-card" onclick="selectDiff(this,'EXTREME')">
+        <div class="diff-name" style="color:#e05ca0">🔴 EXTREME</div>
+        <div class="diff-sub">최악의 시나리오</div>
+      </button>
+    </div>
+  </div>
+
+  <div class="menu-footer">
+    <button class="btn-primary" id="startBtn" onclick="startGame()" disabled>게임 시작</button>
+  </div>
+</div>
+
+<!-- ── SCREEN 3: GAME ── -->
+<div id="screen-game" class="screen">
+  <div class="game-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <div class="game-title-wrap">
+      <div class="game-title" id="gameTitle">TRAINER SIMULATOR</div>
+      <div class="game-subtitle" id="gameSubtitle">Loading...</div>
+    </div>
+    <div class="stat-pill">
+      <span class="dot" id="diffDot" style="background:var(--success)"></span>
+      <span id="diffLabel">EASY</span>
+    </div>
+  </div>
+
+  <div class="chat-area" id="chatArea"></div>
+
+  <div class="choices-wrap" id="choicesWrap"></div>
+</div>
+
+<script>
+// ── STATE ──
+let apiKey = '';
+let chosenMode = null;
+let chosenDiff = null;
+let history = [];
+let turnCount = 0;
+let isLoading = false;
+
+const SYSTEM_PROMPT = `너는 모바일 기반 인터랙티브 시뮬레이션 게임의 게임 마스터(Game Master)이자 스포츠과학 전문가다.
+
+이 게임은 "현실 기반 퍼스널 트레이너 & 러닝 코치 시뮬레이터"다.
+
+사용자는 아파트 커뮤니티센터 트레이너 및 러닝 강사 역할을 수행한다.
+
+# 핵심 규칙
+
+모든 진행은:
+- 짧고 몰입감 있게
+- 모바일 게임 UI 스타일로
+- 선택형 인터페이스처럼 진행해라.
+
+절대로 긴 설명을 한 번에 하지 마라.
+
+# 매우 중요
+
+매 턴마다 반드시 아래 형식을 정확히 지켜라:
+
+---
+📍 DAY X - [상황 제목]
+
+[상황 설명 - 짧게]
+
+회원:
+"[회원 대사]"
+
+현재 상태:
+- 신뢰도: XX%
+- 재등록 확률: XX%
+- 부상 위험도: [낮음/중간/높음]
+
+[선택하세요]
+
+1️⃣ [선택지1]
+2️⃣ [선택지2]
+3️⃣ [선택지3]
+4️⃣ [선택지4]
+---
+
+선택지는:
+- 모두 그럴듯해야 한다
+- 정답이 너무 티나면 안 된다
+- 실제 현장처럼 애매해야 한다
+- 각각 장단점이 존재해야 한다
+
+# 내부 스탯
+
+게임 내부적으로 관리: 회원 신뢰도, 운동 효과, 부상 위험도, 재등록 확률, 회원 스트레스, 운동 지속률, 트레이너 전문성, 러닝 코칭 숙련도, 상담 능력
+
+# 현실성 규칙
+
+회원은 현실적으로 행동:
+- 운동 안 하고 했다고 거짓말
+- 술 때문에 식단 실패
+- 유튜브 잘못된 정보 신뢰
+- 단기 감량 집착
+- 갑자기 환불 고민
+- 감정적 위로 원함
+- 가격 부담
+- 비교 의식 강함
+
+# 절대 금지
+
+- 무조건 성공 금지
+- 무조건 칭찬 금지
+- 비현실적인 회원 금지
+- 너무 쉬운 선택지 금지
+- AI처럼 친절한 회원 금지`;
+
+// ── API KEY SCREEN ──
+document.getElementById('apiKeyInput').addEventListener('input', function() {
+  const v = this.value.trim();
+  document.getElementById('apiNextBtn').disabled = !v.startsWith('sk-ant-');
+});
+
+function toggleVis() {
+  const inp = document.getElementById('apiKeyInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function goToMenu() {
+  const v = document.getElementById('apiKeyInput').value.trim();
+  if (!v.startsWith('sk-ant-')) return;
+  apiKey = v;
+  showScreen('menu');
+}
+
+// ── MENU SCREEN ──
+function selectMode(el, mode) {
+  document.querySelectorAll('.mode-card').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  chosenMode = mode;
+  checkStartReady();
+}
+function selectDiff(el, diff) {
+  document.querySelectorAll('.diff-card').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  chosenDiff = diff;
+  checkStartReady();
+}
+function checkStartReady() {
+  document.getElementById('startBtn').disabled = !(chosenMode && chosenDiff);
+}
+
+async function startGame() {
+  if (!chosenMode || !chosenDiff) return;
+  history = [];
+  turnCount = 0;
+  document.getElementById('gameTitle').textContent = chosenMode;
+  document.getElementById('gameSubtitle').textContent = chosenDiff + ' 난이도';
+  const diffColors = { EASY:'var(--success)', NORMAL:'var(--warn)', HARD:'var(--danger)', EXTREME:'#e05ca0' };
+  document.getElementById('diffDot').style.background = diffColors[chosenDiff] || 'var(--success)';
+  document.getElementById('diffLabel').textContent = chosenDiff;
+  document.getElementById('chatArea').innerHTML = '';
+  document.getElementById('choicesWrap').innerHTML = '';
+  showScreen('game');
+  await sendMessage(`${chosenMode} / ${chosenDiff} 난이도로 게임을 시작해라. 첫 번째 회원을 등장시키고 첫 상황을 만들어라.`);
+}
+
+function goBack() {
+  if (confirm('게임을 종료하고 메뉴로 돌아갈까요?')) {
+    showScreen('menu');
+  }
+}
+
+// ── SCREEN SWITCH ──
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+// ── GAME LOGIC ──
+async function sendMessage(userMsg) {
+  if (isLoading) return;
+  isLoading = true;
+  turnCount++;
+
+  if (turnCount > 1) {
+    addBubble('user', userMsg);
+  }
+
+  history.push({ role: 'user', content: userMsg });
+
+  const loading = addLoadingBubble();
+  clearChoices();
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: history
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      removeEl(loading);
+      addErrorMsg('API 오류: ' + (data.error.message || JSON.stringify(data.error)));
+      isLoading = false;
+      return;
+    }
+
+    const text = data.content?.[0]?.text || '';
+    history.push({ role: 'assistant', content: text });
+
+    removeEl(loading);
+    renderGameTurn(text);
+
+  } catch (e) {
+    removeEl(loading);
+    addErrorMsg('네트워크 오류: ' + e.message);
+  }
+
+  isLoading = false;
+}
+
+function renderGameTurn(text) {
+  // Extract stats block
+  const statMatch = text.match(/신뢰도:\s*([\d]+)%[\s\S]*?재등록 확률:\s*([\d]+)%[\s\S]*?부상 위험도:\s*([^\n]+)/);
+  
+  // Strip choices from main text
+  const choiceLineRe = /^[1-4][️⃣\.].*$/mg;
+  const choiceMatches = [...text.matchAll(choiceLineRe)];
+  
+  let mainText = text;
+  // Remove "[선택하세요]" and choice lines from display
+  mainText = mainText.replace(/\[선택하세요\]/g, '').replace(choiceLineRe, '').trim();
+  // Clean up extra blank lines
+  mainText = mainText.replace(/\n{3,}/g, '\n\n').trim();
+
+  // Add main bubble
+  addBubble('system', mainText);
+
+  // Add stats bar if found
+  if (statMatch) {
+    const trust = parseInt(statMatch[1]);
+    const renew = parseInt(statMatch[2]);
+    const injury = statMatch[3].trim();
+    addStatBar(trust, renew, injury);
+  }
+
+  // Add choices
+  const choices = choiceMatches.map(m => m[0].replace(/^[1-4][️⃣\.]\s*/, '').trim()).filter(Boolean);
+  if (choices.length > 0) {
+    renderChoices(choices);
+  }
+
+  scrollToBottom();
+}
+
+function addBubble(type, text) {
+  const chatArea = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'bubble ' + type;
+  div.textContent = text;
+  chatArea.appendChild(div);
+  return div;
+}
+
+function addStatBar(trust, renew, injury) {
+  const chatArea = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'bubble system';
+  div.style.padding = '0.75rem 1rem';
+
+  const getClass = (val) => val >= 70 ? 'good' : val >= 40 ? 'mid' : 'bad';
+  const injuryClass = injury.includes('낮') ? 'good' : injury.includes('높') ? 'bad' : 'mid';
+
+  div.innerHTML = `<div style="display:flex;gap:20px;flex-wrap:wrap">
+    <div class="stat-item"><span class="stat-label">신뢰도</span><span class="stat-val ${getClass(trust)}">${trust}%</span></div>
+    <div class="stat-item"><span class="stat-label">재등록 확률</span><span class="stat-val ${getClass(renew)}">${renew}%</span></div>
+    <div class="stat-item"><span class="stat-label">부상 위험도</span><span class="stat-val ${injuryClass}">${injury}</span></div>
+  </div>`;
+  chatArea.appendChild(div);
+}
+
+function addLoadingBubble() {
+  const chatArea = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'loading-bubble';
+  div.innerHTML = '<div class="dot-pulse"></div><div class="dot-pulse"></div><div class="dot-pulse"></div>';
+  chatArea.appendChild(div);
+  scrollToBottom();
+  return div;
+}
+
+function addErrorMsg(msg) {
+  const chatArea = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'error-msg';
+  div.textContent = msg;
+  chatArea.appendChild(div);
+  scrollToBottom();
+}
+
+function renderChoices(choices) {
+  const wrap = document.getElementById('choicesWrap');
+  wrap.innerHTML = '';
+  const nums = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
+  choices.forEach((text, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.innerHTML = `<span class="choice-num">${nums[i]||'→'}</span><span>${text}</span>`;
+    btn.onclick = () => handleChoice(text, btn);
+    wrap.appendChild(btn);
+  });
+}
+
+function handleChoice(text, btn) {
+  if (isLoading) return;
+  document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+  sendMessage(text);
+}
+
+function clearChoices() {
+  document.getElementById('choicesWrap').innerHTML = '';
+}
+
+function removeEl(el) { el && el.remove(); }
+
+function scrollToBottom() {
+  setTimeout(() => {
+    const ca = document.getElementById('chatArea');
+    ca.scrollTop = ca.scrollHeight;
+  }, 50);
+}
+</script>
+</body>
+</html>
